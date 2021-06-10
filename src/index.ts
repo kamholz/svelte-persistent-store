@@ -202,7 +202,7 @@ export function cookieStorage(): StorageInterface<any> {
             Cookies.removeItem(key)
         },
         setValue(key: string, value: any) {
-            Cookies.setItem(key, JSON.stringify(value))
+            Cookies.setItem(key, JSON.stringify(value), Infinity)
         }
     }
 }
