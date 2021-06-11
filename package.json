@@ -20,9 +20,10 @@
   ],
   "dependencies": {
     "idb-keyval": "^5.0.4",
-    "js-cookies": "^1.0.4"
+    "js-cookie": "^2.2.1"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^19.0.0",
     "@rollup/plugin-node-resolve": "^11.2.0",
     "@rollup/plugin-typescript": "^8.2.0",
     "@tsconfig/svelte": "^1.0.10",

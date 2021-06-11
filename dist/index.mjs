@@ -54,94 +54,172 @@ function del(key, customStore = defaultGetStore()) {
     });
 }
 
-const encode = (val) => {
-  try {
-    return encodeURIComponent(val);
-  } catch (e) {
-    console.error('error encode %o');
-  }
-  return null;
-};
+var js_cookie = {exports: {}};
 
-const decode = (val) => {
-  try {
-    return decodeURIComponent(val);
-  } catch (err) {
-    console.error('error decode %o');
-  }
-  return null;
-};
+/*!
+ * JavaScript Cookie v2.2.1
+ * https://github.com/js-cookie/js-cookie
+ *
+ * Copyright 2006, 2015 Klaus Hartl & Fagner Brack
+ * Released under the MIT license
+ */
 
-const handleSkey = (sKey) => encode(sKey).replace(/[\-\.\+\*]/g, '\\$&');
+(function (module, exports) {
+(function (factory) {
+	var registeredInModuleLoader;
+	{
+		module.exports = factory();
+		registeredInModuleLoader = true;
+	}
+	if (!registeredInModuleLoader) {
+		var OldCookies = window.Cookies;
+		var api = window.Cookies = factory();
+		api.noConflict = function () {
+			window.Cookies = OldCookies;
+			return api;
+		};
+	}
+}(function () {
+	function extend () {
+		var i = 0;
+		var result = {};
+		for (; i < arguments.length; i++) {
+			var attributes = arguments[ i ];
+			for (var key in attributes) {
+				result[key] = attributes[key];
+			}
+		}
+		return result;
+	}
 
-const Cookies = {
-  getItem(sKey) {
-    if (!sKey) { return null; }
-    return (
-      decode(
-        document.cookie
-        .replace(
-          new RegExp(`(?:(?:^|.*;)\\s*${handleSkey(sKey)}\\s*\\=\\s*([^;]*).*$)|^.*$`)
-        , '$1')
-      ) || null
-    );
-  },
+	function decode (s) {
+		return s.replace(/(%[0-9A-Z]{2})+/g, decodeURIComponent);
+	}
 
-  setItem(sKey, sValue, vEnd, sPath, sDomain, bSecure) {
-    if (!sKey || /^(?:expires|max\-age|path|domain|secure)$/i.test(sKey)) { return false; }
-    let sExpires = '';
-    if (vEnd) {
-      switch (vEnd.constructor) {
-        case Number:
-          if (vEnd === Infinity) {
-            sExpires = '; expires=Fri, 31 Dec 9999 23:59:59 GMT';
-          } else {
-            sExpires = `; max-age=${vEnd}`;
-          }
-          break;
-        case String:
-          sExpires = `; expires=${vEnd}`;
-          break;
-        case Date:
-          sExpires = `; expires=${vEnd.toUTCString()}`;
-          break;
-      }
-    }
-    document.cookie = [
-      encode(sKey), '=', encode(sValue),
-      sExpires,
-      (sDomain ? `; domain=${sDomain}` : ''),
-      (sPath ? `; path=${sPath}` : ''),
-      (bSecure ? '; secure' : ''),
-    ].join('');
-    return true;
-  },
+	function init (converter) {
+		function api() {}
 
-  removeItem(sKey, sPath, sDomain) {
-    if (!this.hasItem(sKey)) { return false; }
-    document.cookie = [
-      encode(sKey), '=; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-      (sDomain ? `; domain=${sDomain}` : ''),
-      (sPath ? `; path=${sPath}` : ''),
-    ].join('');
-    return true;
-  },
+		function set (key, value, attributes) {
+			if (typeof document === 'undefined') {
+				return;
+			}
 
-  hasItem(sKey) {
-    if (!sKey) { return false; }
-    return (
-      new RegExp(`(?:^|;\\s*)${encode(sKey).replace(/[\-\.\+\*]/g, '\\$&')}\\s*\\=`)
-    ).test(document.cookie);
-  },
+			attributes = extend({
+				path: '/'
+			}, api.defaults, attributes);
 
-  keys() {
-    let aKeys = document.cookie
-    .replace(/((?:^|\s*;)[^\=]+)(?=;|$)|^\s*|\s*(?:\=[^;]*)?(?:\1|$)/g, '')
-    .split(/\s*(?:\=[^;]*)?;\s*/);
-    aKeys = aKeys.map((key) => decode(key));
-    return aKeys;
-  },
-};
+			if (typeof attributes.expires === 'number') {
+				attributes.expires = new Date(new Date() * 1 + attributes.expires * 864e+5);
+			}
+
+			// We're using "expires" because "max-age" is not supported by IE
+			attributes.expires = attributes.expires ? attributes.expires.toUTCString() : '';
+
+			try {
+				var result = JSON.stringify(value);
+				if (/^[\{\[]/.test(result)) {
+					value = result;
+				}
+			} catch (e) {}
+
+			value = converter.write ?
+				converter.write(value, key) :
+				encodeURIComponent(String(value))
+					.replace(/%(23|24|26|2B|3A|3C|3E|3D|2F|3F|40|5B|5D|5E|60|7B|7D|7C)/g, decodeURIComponent);
+
+			key = encodeURIComponent(String(key))
+				.replace(/%(23|24|26|2B|5E|60|7C)/g, decodeURIComponent)
+				.replace(/[\(\)]/g, escape);
+
+			var stringifiedAttributes = '';
+			for (var attributeName in attributes) {
+				if (!attributes[attributeName]) {
+					continue;
+				}
+				stringifiedAttributes += '; ' + attributeName;
+				if (attributes[attributeName] === true) {
+					continue;
+				}
+
+				// Considers RFC 6265 section 5.2:
+				// ...
+				// 3.  If the remaining unparsed-attributes contains a %x3B (";")
+				//     character:
+				// Consume the characters of the unparsed-attributes up to,
+				// not including, the first %x3B (";") character.
+				// ...
+				stringifiedAttributes += '=' + attributes[attributeName].split(';')[0];
+			}
+
+			return (document.cookie = key + '=' + value + stringifiedAttributes);
+		}
+
+		function get (key, json) {
+			if (typeof document === 'undefined') {
+				return;
+			}
+
+			var jar = {};
+			// To prevent the for loop in the first place assign an empty array
+			// in case there are no cookies at all.
+			var cookies = document.cookie ? document.cookie.split('; ') : [];
+			var i = 0;
+
+			for (; i < cookies.length; i++) {
+				var parts = cookies[i].split('=');
+				var cookie = parts.slice(1).join('=');
+
+				if (!json && cookie.charAt(0) === '"') {
+					cookie = cookie.slice(1, -1);
+				}
+
+				try {
+					var name = decode(parts[0]);
+					cookie = (converter.read || converter)(cookie, name) ||
+						decode(cookie);
+
+					if (json) {
+						try {
+							cookie = JSON.parse(cookie);
+						} catch (e) {}
+					}
+
+					jar[name] = cookie;
+
+					if (key === name) {
+						break;
+					}
+				} catch (e) {}
+			}
+
+			return key ? jar[key] : jar;
+		}
+
+		api.set = set;
+		api.get = function (key) {
+			return get(key, false /* read as raw */);
+		};
+		api.getJSON = function (key) {
+			return get(key, true /* read as json */);
+		};
+		api.remove = function (key, attributes) {
+			set(key, '', extend(attributes, {
+				expires: -1
+			}));
+		};
+
+		api.defaults = {};
+
+		api.withConverter = init;
+
+		return api;
+	}
+
+	return init(function () {});
+}));
+}(js_cookie));
+
+var Cookies = js_cookie.exports;
 
 /**
  * Make a store persistent
@@ -265,22 +343,13 @@ function cookieStorage() {
     }
     return {
         getValue(key) {
-            if (!Cookies.hasItem(key)) {
-                return null;
-            }
-            const value = Cookies.getItem(key);
-            try {
-                return JSON.parse(value);
-            }
-            catch (e) {
-                return value;
-            }
+            return Cookies.getJSON(key) || null;
         },
         deleteValue(key) {
-            Cookies.removeItem(key);
+            Cookies.remove(key);
         },
         setValue(key, value) {
-            Cookies.setItem(key, JSON.stringify(value), Infinity);
+            Cookies.set(key, value, { expires: 1e4 });
         }
     };
 }

@@ -1,5 +1,5 @@
 import { get, set, createStore, del } from "idb-keyval"
-import Cookies from "js-cookies/src/cookies.js"
+import Cookies from "js-cookie"
 import type { Writable } from "svelte/store"
 
 /**
@@ -187,22 +187,13 @@ export function cookieStorage(): StorageInterface<any> {
 
     return {
         getValue(key: string): any | null {
-            if (!Cookies.hasItem(key)) {
-                return null
-            }
-
-            const value = Cookies.getItem(key)
-            try {
-                return JSON.parse(value)
-            } catch (e) {
-                return value
-            }
+            return Cookies.getJSON(key) || null
         },
         deleteValue(key: string) {
-            Cookies.removeItem(key)
+            Cookies.remove(key)
         },
         setValue(key: string, value: any) {
-            Cookies.setItem(key, JSON.stringify(value), Infinity)
+            Cookies.set(key, value, { expires: 1e4 })
         }
     }
 }
